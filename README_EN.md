@@ -35,9 +35,9 @@ Intel Macs and macOS 25 or earlier are not currently supported.
 
 ## Download
 
-Once distribution begins, you can download `HankakuSpace.dmg` from the latest GitHub Release.
+Download `HankakuSpace.dmg` from the [latest GitHub Release](https://github.com/matcha-gummi/hankaku-space/releases/latest).
 
-> The current beta release is not signed with a Developer ID certificate or notarized by Apple. macOS may display a security prompt when you launch it for the first time.
+> The latest release is Developer ID signed and notarized by Apple. Drag the app into Applications and launch it. Accessibility permission is still required.
 
 ## Installation
 
@@ -48,12 +48,7 @@ Once distribution begins, you can download `HankakuSpace.dmg` from the latest Gi
 
 ### If macOS blocks the app from opening
 
-1. Open System Settings.
-2. Select Privacy & Security.
-3. Find the message about Hankaku Space and select Open Anyway.
-4. Select Open again in the confirmation dialog.
-
-If the warning says the app is damaged and cannot be opened, rather than saying that the developer cannot be verified, do not bypass the warning. Please report it in an Issue.
+Make sure you downloaded the latest notarized release from the official GitHub Releases page. If macOS reports a damaged app or another security warning, do not bypass it; report an Issue.
 
 ## First-Time Setup
 
@@ -127,7 +122,7 @@ defaults delete jp.local.HankakuSpace
 - The app recognizes Apple's built-in Japanese input method and common IMEs whose input source IDs contain Japanese, Kotoeri, ATOK, or GoogleJapaneseInput.
 - IMEs that use a custom input source ID may require additional support.
 - macOS may require Accessibility permission to be registered again when the app's signature or location changes.
-- The current release is not signed with a Developer ID certificate or notarized by Apple.
+- Moving from an older ad hoc release to the signed release may require Accessibility permission to be registered again.
 
 ## For Developers
 
@@ -137,32 +132,38 @@ defaults delete jp.local.HankakuSpace
 - Apple silicon
 - Xcode 26 or later
 
-### Build
+### Local testing
 
 ```zsh
-chmod +x scripts/*.sh
-./scripts/build_release.sh
+./scripts/build_release.sh local
+./scripts/create_dmg.sh local
 ```
 
-Generated app:
+Ad hoc artifacts stay under `build/` and must not be published.
 
-```text
-build/DerivedData/Build/Products/Release/HankakuSpace.app
-```
+### Signed DMG distribution
 
-### Create a DMG
+Install a valid Developer ID Application certificate with its private key in Keychain. Store notarization credentials interactively using `xcrun notarytool store-credentials`; never commit credentials.
 
 ```zsh
+export DEVELOPER_ID_APPLICATION='Developer ID Application: YOUR NAME (TEAMID)'
 ./scripts/create_dmg.sh
 ```
 
-Generated DMG:
+This signs the app with Hardened Runtime and a secure timestamp, then signs the DMG. Missing certificates cause failure, without ad hoc fallback. The intermediate `build/HankakuSpace-signed.dmg` is not ready for distribution.
 
-```text
-dist/HankakuSpace.dmg
+The next command **uploads the DMG to Apple**. Run only after approving that upload:
+
+```zsh
+export NOTARYTOOL_PROFILE='YOUR_KEYCHAIN_PROFILE'
+./scripts/notarize_dmg.sh --submit-to-apple
 ```
 
-The current scripts use ad hoc code signing for local testing. For formal distribution, replace it with signing using a Developer ID Application certificate, notarization, and stapling.
+Only an Accepted submission followed by successful stapling, signature, Gatekeeper and image checks produces `dist/HankakuSpace.dmg` and its SHA-256 file. Failure preserves any previous distribution artifact. Publishing to GitHub remains a separate action.
+
+Test a browser download on another Mac, including Accessibility permission, space conversion and launch at login. Moving from ad hoc signing may require Accessibility permission to be registered again. The bundle identifier is preserved. Publish only the verified, notarized artifact from `dist/HankakuSpace.dmg`.
+
+See [Apple's notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
 
 ## License
 

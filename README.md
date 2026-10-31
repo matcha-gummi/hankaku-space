@@ -35,9 +35,9 @@ Intel MacとmacOS 25以前には、現在対応していません。
 
 ## ダウンロード
 
-配布開始後、GitHub Releasesの最新版から `HankakuSpace.dmg` をダウンロードできます。
+[GitHub Releasesの最新版](https://github.com/matcha-gummi/hankaku-space/releases/latest)から `HankakuSpace.dmg` をダウンロードできます。
 
-> 現在の配布版はDeveloper IDによる署名・Appleの公証を行っていないベータ版です。初回起動時にmacOSのセキュリティ確認が表示される場合があります。
+> 最新の配布版はDeveloper ID署名・Appleの公証済みです。DMGからApplicationsへドラッグして起動できます。初回はアクセシビリティ権限を許可してください。
 
 ## インストール
 
@@ -48,13 +48,7 @@ Intel MacとmacOS 25以前には、現在対応していません。
 
 ### macOSに起動を止められた場合
 
-1. 最初の警告画面では「ゴミ箱に入れる」ではなく「完了」を選びます。
-2. 「システム設定」を開きます。
-3. 「プライバシーとセキュリティ」を開きます。
-4. Hankaku Spaceについて表示されている「このまま開く」を選びます。
-5. 確認画面でもう一度「開く」を選びます。
-
-警告の内容が「開発元を確認できません」ではなく「破損しているため開けません」の場合は、無理に解除せずIssueでお知らせください。
+最新の公証済み版を公式のGitHub Releasesから取得したか確認してください。「破損している」などの警告が出る場合は、無理に解除せずIssueでお知らせください。
 
 ## 初回設定
 
@@ -128,7 +122,7 @@ defaults delete jp.local.HankakuSpace
 - Apple純正日本語入力、および入力ソースIDにJapanese／Kotoeri／ATOK／GoogleJapaneseInputを含む一般的なIMEを判定対象にしています。
 - 独自の入力ソースIDを使用するIMEでは、追加対応が必要になる場合があります。
 - アプリの署名や配置場所が変わると、macOSがアクセシビリティ権限の再登録を求める場合があります。
-- 現在の配布版はDeveloper ID署名・Appleの公証を行っていません。
+- 旧版から署名済み版への移行時には、アクセシビリティ権限の再登録が必要になる場合があります。
 
 ## 開発者向け
 
@@ -138,32 +132,47 @@ defaults delete jp.local.HankakuSpace
 - Apple Silicon
 - Xcode 26以降
 
-### ビルド
+### ローカル試用
 
 ```zsh
-chmod +x scripts/*.sh
-./scripts/build_release.sh
+./scripts/build_release.sh local
+./scripts/create_dmg.sh local
 ```
 
-生成されるアプリ：
+ローカル試用版はアドホック署名です。生成先は `${TMPDIR:-/tmp}/HankakuSpace-build/local/DerivedData/Build/Products/Release/HankakuSpace.app` と `build/HankakuSpace-local.dmg` で、公開用には使用しません。
 
-```text
-build/DerivedData/Build/Products/Release/HankakuSpace.app
-```
+署名対象のビルドは、Finderの拡張属性による署名失敗を避けるため一時領域に作成します。
 
-### DMG作成
+### Developer ID署名と公証
+
+1. Apple Developer Programの有効なアカウントで、秘密鍵を含むDeveloper ID Application証明書をこのMacのキーチェーンに用意します。
+2. 公証用の認証情報を `xcrun notarytool store-credentials` の対話入力でキーチェーンに保存します。パスワードや秘密鍵をリポジトリに保存しないでください。
+3. 証明書の名前を指定して署名済みDMGを作ります。
 
 ```zsh
+export DEVELOPER_ID_APPLICATION='Developer ID Application: YOUR NAME (TEAMID)'
 ./scripts/create_dmg.sh
 ```
 
-生成されるDMG：
+アプリはHardened Runtimeとセキュアタイムスタンプ付きで署名され、DMGにも署名します。生成先の `build/HankakuSpace-signed.dmg` は公証前なので配布しません。証明書がない場合は停止し、アドホック署名へ自動で切り替えません。
 
-```text
-dist/HankakuSpace.dmg
+4. **以下はAppleへDMGを送信します。送信を承認したうえで実行してください。**
+
+```zsh
+export NOTARYTOOL_PROFILE='YOUR_KEYCHAIN_PROFILE'
+./scripts/notarize_dmg.sh --submit-to-apple
 ```
 
-現在のスクリプトは、ローカル試用向けのアドホック署名を使用します。正式配布する場合は、Developer ID Application証明書による署名、公証、ステープル処理へ置き換えてください。
+AppleのAccepted結果、公証チケットのステープルと検証、署名・Gatekeeper・DMGの検査に成功した場合だけ、`dist/HankakuSpace.dmg` とSHA-256ファイルを生成・更新します。公証に失敗した場合は既存の配布成果物を置き換えません。公開アップロードは別操作です。
+
+### 配布前確認
+
+- GitHub ReleasesでのDMG配布とApplicationsへのドラッグ方式を継続します。
+- 初回署名版への移行時は、アクセシビリティ権限の再登録が必要になる場合があります。Bundle IDは維持します。
+- 別のMacでブラウザから取得し、初回起動・アクセシビリティ許可・Space変換・ログイン時起動を確認してください。
+- 公開するDMGは必ず公証・Gatekeeper検証済みの `dist/HankakuSpace.dmg` を使用してください。
+
+仕様の根拠：[Appleの公証ワークフロー](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow)。
 
 ## ライセンス
 
